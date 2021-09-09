@@ -1,8 +1,10 @@
-import { ApolloServer, gql, ApolloError } from "apollo-server";
+const express = require("express");
+import { ApolloServer, gql, ApolloError } from "apollo-server-express";
 import { v4 as uuid } from "uuid";
 import { name } from "faker";
 import fetch from "isomorphic-fetch";
 import { Resolvers, Dog, Person, Breed } from "./generated/graphql";
+import http from "http";
 // The GraphQL schema
 const typeDefs = gql`
   enum Breed {
@@ -131,15 +133,24 @@ const setUp = async () => {
     },
   };
 
+  const app = express();
+
+  app.use((req, res, next) => {
+    setTimeout(next, 500);
+  });
   const server = new ApolloServer({
     typeDefs,
     resolvers,
     debug: false,
   });
+  await server.start();
+  server.applyMiddleware({ app });
+  const httpServer = http.createServer(app);
 
-  server.listen().then(({ url }) => {
-    console.log(`🚀 Server ready at ${url}`);
-  });
+  await new Promise<void>((resolve) =>
+    httpServer.listen({ port: 4000 }, () => resolve())
+  );
+  console.log(`🚀 Server ready at http://localhost:4000${server.graphqlPath}`);
 };
 
 setUp();
